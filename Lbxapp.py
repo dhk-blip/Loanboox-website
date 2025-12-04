@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import numpy as np
+import statsmodels.api as sm
 from datetime import date
 
 # PAGE CONFIGURATION
@@ -12,7 +13,7 @@ st.set_page_config(
 
 relevant_cols = ['5Y_SARON_swap_fixed_rate', '3m_SARON_OIS_rate', 'Curve', 'SNB_Leitzins', 'Inflation', 'M2', 'Req_Volume', 'Selected_Volume']
 
-# (Loanboox Branding)
+# Loanboox Branding: this comes from ChatGPT
 st.markdown("""
     <style>
         :root { --primary-color: #004B66; --secondary-color: #00A6D6; }
@@ -217,7 +218,7 @@ def main():
     with tab3:
         st.subheader("Verify Hypotheses")
         
-        pot_y = ['Req_Volume', 'Selected_Volume', 'Anzahl_Unt_Lender']
+        pot_y = ['Req_Volume', 'Selected_Volume'] # , 'Anzahl_Unt_Lender' can be added but is to complicated for now (requires more complicated regression)
         pot_x = ['5Y_SARON_swap_fixed_rate', '3m_SARON_OIS_rate', 'Curve', 'SNB_Leitzins', 'Inflation', 'M2']
 
         c1, c2 = st.columns(2)
@@ -254,15 +255,74 @@ def main():
                                   labels={y_var: y_label}, color_discrete_sequence=[COLOR_PRIMARY])
             st.plotly_chart(fig_hypo, use_container_width=True)
             
-            # Show correlation coefficient
+            # regression Analysis
             if len(df_plot) > 1:
-                corr = df_plot[x_var].corr(df_plot[y_var])
-                st.info(f"Correlation: **{corr:.4f}**")
+                st.divider()
+                st.markdown("### OLS Regression Analysis")
+                
+                # 1. Clean Data: drop NaN values
+                df_reg = df_plot[[x_var, y_var]].dropna()
+                
+                # 2. Prepare megression
+                Y = df_reg[y_var]
+                # adding a constant through add_constant
+                X = sm.add_constant(df_reg[x_var])
+                
+                # 3. Fit model
+                model = sm.OLS(Y, X).fit()
+                
+                # 4. Extract Results 
+                r2 = model.rsquared          # How well does X explain Y?
+                coef = model.params[x_var]   # Slope 
+                p_value = model.pvalues[x_var] # Significance
+                
+                # 5. Display Metrics
+                c1, c2, c3 = st.columns(3)
+                
+                # R-Squared
+                c1.metric(
+                    "R² (Explanatory Power)", 
+                    f"{r2:.4f}", 
+                    help="Indicates the percentage of the variance in Y that is explained by X. 1.0 would be a perfect fit."
+                )
+                
+                # Slope
+                c2.metric(
+                    "Coefficient", 
+                    f"{coef:.4f}", 
+                    help="Indicates how much Y changes when X increases by 1 unit."
+                )
+                
+                # Significance (P-Value)
+                p_fmt = f"{p_value:.4e}" if p_value < 0.001 else f"{p_value:.4f}"
+                c3.metric(
+                    "P-Value", 
+                    p_fmt, 
+                    help="The probability that the result is just random chance."
+                )
+                
+                # Conclusion box
+                if p_value < 0.05:
+                    st.info(f"**Significant Result** (p < 0.05). The variable *{x_var}* has a statistically verifiable influence on *{y_var}*.")
+                else:
+                    st.warning(f"**No Significant Relationship** (p > 0.05). The influence of *{x_var}* on *{y_var}* cannot be statistically proven.")
+                
+                # Info text for less experienced users
+                with st.expander("Methodology & Limitations"):
+                    st.markdown("""
+                    **What this analysis does:**
+                    This tool performs a **Simple Linear Regression (OLS)**. It attempts to fit a straight line through the data points to determine if changes in the chosen *Factor (X)* reliably predict changes in the *Target (Y)*.
 
-    # TAB 4: Raw Data
+                    **Limitations:**
+                    * **Correlation doesn't mean Causation:** A significant result proves a relationship, but it does not prove that X causes Y.
+                    * **Linearity assumption:** This model assumes a straight-line relationship.
+                    * **Single factor view:** This analysis looks at only one factor at a time. In reality, the target variable might be influenced by multiple factors simultaneously (e.g., Seasonality + Interest Rates). This has been conducted in the Jupyter Notebook.
+                    """)
+                
+
+    # TAB 4: Raw Data to filter and play around
     with tab4:
         st.dataframe(df_working_filtered)
 
 if __name__ == "__main__":
-
     main()
