@@ -60,7 +60,7 @@ def main():
     st.markdown("Visualize financial data and explore it interactively!")
     
     # Logo
-    st.sidebar.image(".streamlit/logo.png", use_container_width=True)
+    st.sidebar.image("logo.png", use_container_width=True)
 
     # File uploader
     uploaded_file = st.file_uploader("Select the cleaned Loanboox Excel file", type=['xlsx', 'xls'])
@@ -264,4 +264,5 @@ def main():
         st.dataframe(df_working_filtered)
 
 if __name__ == "__main__":
+
     main()
