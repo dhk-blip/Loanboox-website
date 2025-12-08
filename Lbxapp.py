@@ -6,10 +6,7 @@ import statsmodels.api as sm
 from datetime import date
 
 # PAGE CONFIGURATION
-st.set_page_config(
-    page_title="Loanboox Analytics Dashboard",
-    layout="wide"
-)
+st.set_page_config(page_title="Loanboox Analytics Dashboard", layout="wide")
 
 relevant_cols = ['5Y_SARON_swap_fixed_rate', '3m_SARON_OIS_rate', 'Curve', 'SNB_Leitzins', 'Inflation', 'M2', 'Req_Volume', 'Selected_Volume']
 
@@ -31,7 +28,7 @@ COLOR_SECONDARY = "#00A6D6"
 BLACK = "#000000"
 
 # Data load and preprocessing function (date)
-
+# I use st.cache_data to cache the loaded data for more speed as you suggested
 @st.cache_data
 def load_data(uploaded_file):
     """Loads and preprocesses the data from the uploaded Excel file."""
@@ -48,8 +45,6 @@ def load_data(uploaded_file):
 
     # Direct date conversion (“date” exists in the dataset, as it is cleaned beforehand)
     df['datum'] = pd.to_datetime(df['datum'])
-    df['Jahr'] = df['datum'].dt.year
-    df['Monat'] = df['datum'].dt.month_name()
     df['YearMonth'] = df['datum'].dt.to_period('M').astype(str)
     
     return df
@@ -102,7 +97,7 @@ def main():
     if 'filter_zeros' not in st.session_state:
         st.session_state.filter_zeros = False
 
-    manual_filter_zeros = st.sidebar.checkbox("Only successful closings (> 0)", key='filter_zeros')
+    manual_filter_zeros = st.sidebar.checkbox("Only successful closings (selected_volume > 0)", key='filter_zeros')
     
     do_agg = st.sidebar.checkbox("Aggregate monthly", value=False)
     do_log = st.sidebar.checkbox("Logarithmize Y-variables", value=False)
@@ -166,7 +161,7 @@ def main():
         
             
         # checkbox selection for correlation matrix
-        st.markdown("### Select variables for correlation matrix:")
+        st.markdown("#### Select variables for correlation matrix:")
         
         cols = st.columns(4)
         selected_vars_matrix = []
@@ -192,8 +187,8 @@ def main():
         st.divider()
         
         # Checkbox selection for macro trends
-        st.subheader("Macro Data Trends")
-        st.markdown("### Select macro variables to plot:")
+        st.subheader("Macro data trends")
+        st.markdown("#### Select macro variables to plot:")
         
         macro_cols_all = ['5Y_SARON_swap_fixed_rate', '3m_SARON_OIS_rate', 'Curve', 'SNB_Leitzins', 'Inflation', 'M2']
         default_macro = ['5Y_SARON_swap_fixed_rate', 'Inflation']
